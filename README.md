@@ -1,2 +1,2 @@
 # dmenu
-Dmenu fork
+dmenu fork
