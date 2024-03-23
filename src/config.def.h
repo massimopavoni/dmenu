@@ -5,7 +5,7 @@ static int topbar = 1;                      /* -b option; if 0, dmenu appears at
 static int centered = 1;                    /* -c option; centers dmenu on screen */
 static int min_width = 512;                 /* minimum width when centered */
 static int fuzzy = 1;                       /* -F option; if 0, dmenu doesn't use fuzzy matching */
-static const unsigned int alpha = 0xc0;     /* amount of opacity */
+static const unsigned int alpha = 0x80;     /* amount of opacity */
 /* -fn option overrides fonts[0]; default X11 font or font set */
 static const char *fonts[] = {
 	"FiraCode:size=13"
@@ -13,9 +13,9 @@ static const char *fonts[] = {
 static const char *prompt = NULL;      /* -p option; prompt to the left of input field */
 static const char *colors[SchemeLast][2] = {
 	/*     fg         bg       */
-	[SchemeNorm] = { "#bbbbbb", "#222222" },
-	[SchemeSel] = { "#eeeeee", "#005577" },
-	[SchemeOut] = { "#000000", "#00ffff" },
+	[SchemeNorm] = { "#dddddd", "#000000" },
+	[SchemeSel] = { "#ffffff", "#004400" },
+	[SchemeOut] = { "#000000", "#006600" },
 };
 static const unsigned int alphas[SchemeLast][2] = {
 	[SchemeNorm] = { OPAQUE, alpha },
@@ -23,7 +23,7 @@ static const unsigned int alphas[SchemeLast][2] = {
 	[SchemeOut] = { OPAQUE, alpha },
 };
 /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
-static unsigned int lines = 16;
+static unsigned int lines = 8;
 
 /*
  * Characters not considered part of a word while deleting words
