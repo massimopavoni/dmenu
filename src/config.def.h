@@ -3,7 +3,7 @@
 
 static int topbar = 1;                      /* -b option; if 0, dmenu appears at bottom */
 static int centered = 1;                    /* -c option; centers dmenu on screen */
-static int min_width = 512;                 /* minimum width when centered */
+static int min_width = 256;                 /* minimum width when centered */
 static int fuzzy = 1;                       /* -F option; if 0, dmenu doesn't use fuzzy matching */
 static const unsigned int alpha = 0xC0;     /* amount of opacity */
 /* -fn option overrides fonts[0]; default X11 font or font set */
