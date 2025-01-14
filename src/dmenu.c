@@ -364,7 +364,7 @@ fuzzymatch(void)
 				if (!fstrncmp(&text[pidx], &c, 1)) {
 					if(sidx == -1)
 						sidx = i;
-					pidx++;
+					++pidx;
 					if (pidx == text_len) {
 						eidx = i;
 						break;
@@ -379,7 +379,7 @@ fuzzymatch(void)
 				it->distance = log(sidx + 2) + (double)(eidx - sidx - text_len);
 				/* fprintf(stderr, "distance %s %f\n", it->text, it->distance); */
 				appenditem(it, &matches, &matchend);
-				number_of_matches++;
+				++number_of_matches;
 			}
 		} else {
 			appenditem(it, &matches, &matchend);
@@ -390,7 +390,7 @@ fuzzymatch(void)
 		/* initialize array with matches */
 		if (!(fuzzymatches = realloc(fuzzymatches, number_of_matches * sizeof(struct item*))))
 			die("cannot realloc %u bytes:", number_of_matches * sizeof(struct item*));
-		for (i = 0, it = matches; it && i < number_of_matches; i++, it = it->right) {
+		for (i = 0, it = matches; it && i < number_of_matches; ++i, it = it->right) {
 			fuzzymatches[i] = it;
 		}
 		/* sort matches according to distance */
@@ -398,7 +398,7 @@ fuzzymatch(void)
 		/* rebuild list of matches */
 		matches = matchend = NULL;
 		for (i = 0, it = fuzzymatches[i];  i < number_of_matches && it && \
-				it->text; i++, it = fuzzymatches[i]) {
+				it->text; ++i, it = fuzzymatches[i]) {
 			appenditem(it, &matches, &matchend);
 		}
 		free(fuzzymatches);
@@ -940,7 +940,7 @@ setup(void)
 static void
 usage(void)
 {
-	die("usage: dmenu [-bCfiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
+	die("usage: dmenu [-bCFfiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
 	    "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]");
 }
 
@@ -959,10 +959,10 @@ main(int argc, char *argv[])
 			topbar = 0;
 		else if (!strcmp(argv[i], "-C"))   /* turn dmenu into qalc frontend */
 			qalc.enable = 1;
+		else if (!strcmp(argv[i], "-F"))   /* disables fuzzy matching */
+			fuzzy = 0;
 		else if (!strcmp(argv[i], "-f"))   /* grabs keyboard before reading stdin */
 			fast = 1;
-		else if (!strcmp(argv[i], "-F"))   /* don't use fuzzy match */
-			fuzzy = 0;
 		else if (!strcmp(argv[i], "-c"))   /* centers dmenu on screen */
 			centered = 1;
 		else if (!strcmp(argv[i], "-s")) { /* case-sensitive item matching */
