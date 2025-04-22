@@ -140,12 +140,14 @@ cleanup(void)
 		free(scheme[i]);
 	for (i = 0; items && items[i].text; ++i)
 		free(items[i].text);
-	for (i = 0; popitems && popitems[i].text; ++i)
-		free(popitems[i].text);
+	if (popularity) {
+		for (i = 0; popitems && popitems[i].text; ++i)
+			free(popitems[i].text);
+		free(popitems);
+		if(popcache != NULL)
+			free(popcache);
+	}
 	free(items);
-	free(popitems);
-	if(popcache != NULL)
-		free(popcache);
 
 	drw_free(drw);
 	XSync(dpy, False);
@@ -306,7 +308,7 @@ incpop(struct item* sel) {
 		}
 		fputs(pop->text, out);
 		fputs(" ", out);
-		sprintf(decimal, "%i", MIN(pop->out, 999));
+		sprintf(decimal, "%i", MIN(pop->out, 16777216));
 		fputs(decimal, out);
 		fputs("\n", out);
 	}
@@ -507,7 +509,8 @@ match(void)
 			appenditem(item, &others, &othersend);
 	}
 	if (others) {
-		sortitemsbypop(others, othersend);
+		if (popularity)
+			sortitemsbypop(others, othersend);
 		if (matches) {
 			matchend->right = others;
 			others->left = matchend;
@@ -728,7 +731,8 @@ insert:
 		break;
 	case XK_Return:
 	case XK_KP_Enter:
-		incpop(sel);
+		if (popularity)
+			incpop(sel);
 		puts((sel && !(ev->state & ShiftMask)) ? sel->text : text);
 		if (!(ev->state & ControlMask)) {
 			cleanup();
@@ -1032,7 +1036,7 @@ loadpopitems(void)
 	const char* xdg_cache_home = getenv("XDG_CACHE_HOME");
 	const char* home = getenv("HOME");
 	char* cache = NULL;
-	const char* CACHE_FILENAME = "/dmenu_pop.txt";
+	const char* CACHE_FILENAME = "/dmenu_pop";
 	if(xdg_cache_home != NULL) {
 		size_t xdglen = strlen(xdg_cache_home);
 		cache = (char*)malloc(xdglen + 1);
@@ -1082,7 +1086,7 @@ loadpopitems(void)
 static void
 usage(void)
 {
-	die("usage: dmenu [-bCFfiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
+	die("usage: dmenu [-bCFfPiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
 	    "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]");
 }
 
@@ -1105,6 +1109,8 @@ main(int argc, char *argv[])
 			fuzzy = 0;
 		else if (!strcmp(argv[i], "-f"))   /* grabs keyboard before reading stdin */
 			fast = 1;
+	        else if (!strcmp(argv[i], "-P"))  /* sort by popularity */
+			popularity = 1;
 		else if (!strcmp(argv[i], "-c"))   /* centers dmenu on screen */
 			centered = 1;
 		else if (!strcmp(argv[i], "-s")) { /* case-sensitive item matching */
@@ -1170,8 +1176,11 @@ main(int argc, char *argv[])
 		readstdin();
 		grabkeyboard();
 	}
-	loadpopitems();
-	sortitemsbypop(items, NULL);
+
+	if (popularity) {
+		loadpopitems();
+		sortitemsbypop(items, NULL);
+	}
 	setup();
 	run();
 
