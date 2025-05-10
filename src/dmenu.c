@@ -39,7 +39,6 @@ enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; /* color schemes */
 
 struct item {
 	char *text;
-  unsigned int width;
 	struct item *left, *right;
 	int out;
 	double distance;
@@ -127,7 +126,7 @@ max_textw(void)
 {
 	int len = 0;
 	for (struct item *item = items; item && item->text; item++)
-		len = MAX(item->width, len);
+		len = MAX(TEXTW(item->text), len);
 	return len;
 }
 
@@ -808,7 +807,6 @@ readstdin(void)
 			line[len - 1] = '\0';
 		if (!(items[i].text = strdup(line)))
 			die("strdup:");
-		items[i].width = TEXTW(line);
 
 		items[i].out = 0;
 	}
