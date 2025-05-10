@@ -10,9 +10,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <signal.h>
 #include <sys/prctl.h>
-#include <sys/select.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -322,7 +322,7 @@ incpop(struct item* sel) {
 }
 
 static void
-init_qalc(void)
+qalc_init(void)
 {
 	pipe(qalc.in);
 	pipe2(qalc.out, O_NONBLOCK);
@@ -349,22 +349,19 @@ init_qalc(void)
 }
 
 static void
-recv_qalc(void)
+qalc_recv(void)
 {
 	ssize_t r = read(qalc.out[0], qalc.buf, LENGTH(qalc.buf));
-
 	if (r < 0)
 		die("error reading qalc.out");
-
 	if (qalc.buf[0] == '\n') {
 		int i;
 		for (i = 3; i < LENGTH(qalc.buf) && qalc.buf[i] != '\n'; ++i)
-			items[0].text[i-3] = qalc.buf[i];
-		items[0].text[i-3] = 0;
+			items[0].text[i - 3] = qalc.buf[i];
+		items[0].text[i - 3] = 0;
 		if (r != LENGTH(qalc.buf))
 			return;
 	}
-
 	while (read(qalc.out[0], qalc.buf, LENGTH(qalc.buf)) != -1)
 		; // empty the pipe
 	if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -372,15 +369,15 @@ recv_qalc(void)
 }
 
 static void
-send_qalc(void)
+qalc_send(void)
 {
 	int s = strlen(text);
 	text[s] = '\n';
-	write(qalc.in[1], text, s+1);
+	write(qalc.in[1], text, s + 1);
 	text[s] = 0;
 }
 
-static void match_qalc(void)
+static void qalc_match(void)
 {
 	matches = matchend = NULL;
 	appenditem(items, &matches, &matchend);
@@ -473,7 +470,7 @@ static void
 match(void)
 {
 	if (qalc.enable) {
-		match_qalc();
+		qalc_match();
 		return;
 	}
 
@@ -769,7 +766,7 @@ insert:
 	}
 
   if (qalc.enable)
-    send_qalc();
+    qalc_send();
 
 draw:
 	drawmenu();
@@ -826,52 +823,48 @@ run(void)
 {
 	XEvent ev;
 
-  fd_set rfds;
-  int xfd = ConnectionNumber(dpy);
-
-  for (;;) {
-    FD_ZERO(&rfds);
-    FD_SET(xfd, &rfds);
-    FD_SET(qalc.out[0], &rfds);
-
-    if (select(MAX(xfd, qalc.out[0])+1, &rfds, NULL, NULL, NULL) > 0) {
-      if (qalc.enable && FD_ISSET(qalc.out[0], &rfds)) {
-        recv_qalc();
-        drawmenu();
-      }
-      while (XPending(dpy) && !XNextEvent(dpy, &ev)) {
-        if (XFilterEvent(&ev, win))
-          continue;
-        switch(ev.type) {
-          case DestroyNotify:
-            if (ev.xdestroywindow.window != win)
-              break;
-            cleanup();
-            exit(1);
-          case Expose:
-            if (ev.xexpose.count == 0)
-              drw_map(drw, win, 0, 0, mw, mh);
-            break;
-          case FocusIn:
-            /* regrab focus from parent window */
-            if (ev.xfocus.window != win)
-              grabfocus();
-            break;
-          case KeyPress:
-            keypress(&ev.xkey);
-            break;
-          case SelectionNotify:
-            if (ev.xselection.property == utf8)
-              paste();
-            break;
-          case VisibilityNotify:
-            if (ev.xvisibility.state != VisibilityUnobscured)
-              XRaiseWindow(dpy, win);
-            break;
-        }
-      }
-    }
-  }
+	int xfd = ConnectionNumber(dpy);
+	struct pollfd fds[] = {
+		{xfd, POLLIN, 0},
+		{qalc.out[0], POLLIN, 0},
+	};
+	while (poll(fds, 2, -1) > 0) {
+		if (qalc.enable && fds[1].revents & POLLIN) {
+			qalc_recv();
+			drawmenu();
+		}
+		while (XPending(dpy) && !XNextEvent(dpy, &ev)) {
+			if (XFilterEvent(&ev, win))
+				continue;
+			switch (ev.type) {
+			case DestroyNotify:
+				if (ev.xdestroywindow.window != win)
+					break;
+				cleanup();
+				exit(1);
+			case Expose:
+				if (ev.xexpose.count == 0)
+					drw_map(drw, win, 0, 0, mw, mh);
+				break;
+			case FocusIn:
+				/* regrab focus from parent window */
+				if (ev.xfocus.window != win)
+					grabfocus();
+				break;
+			case KeyPress:
+				keypress(&ev.xkey);
+				break;
+			case SelectionNotify:
+				if (ev.xselection.property == utf8)
+					paste();
+				break;
+			case VisibilityNotify:
+				if (ev.xvisibility.state != VisibilityUnobscured)
+					XRaiseWindow(dpy, win);
+				break;
+			}
+		}
+	}
 }
 
 static void
@@ -1105,7 +1098,7 @@ main(int argc, char *argv[])
 			exit(0);
 		} else if (!strcmp(argv[i], "-b")) /* appears at the bottom of the screen */
 			topbar = 0;
-		else if (!strcmp(argv[i], "-C"))   /* turn dmenu into qalc frontend */
+		else if (!strcmp(argv[i], "-C"))   /* enable calculator */ 
 			qalc.enable = 1;
 		else if (!strcmp(argv[i], "-F"))   /* disables fuzzy matching */
 			fuzzy = 0;
@@ -1169,7 +1162,7 @@ main(int argc, char *argv[])
 #endif
 
 	if (qalc.enable) {
-		init_qalc();
+		qalc_init();
 		grabkeyboard();
 	} else if (fast && !isatty(0)) {
 		grabkeyboard();
